@@ -4,6 +4,7 @@
 #include <random>
 #include <algorithm>
 #include <iomanip>
+#include <ctime>
 
 using namespace std;
 
@@ -11,30 +12,38 @@ using namespace std;
 // RANDOM NUMBER GENERATOR
 // ============================================================
 
+// This class generates random numbers that we can use
+// for things like personality, events and decisions.
 class Random
 {
 private:
     mt19937 generator;
 
 public:
+
+    // Constructor: initializes the random number generator.
     Random() : generator(random_device{}()) {}
 
+    // Returns a random integer between min and max.
     int integer(int min, int max)
     {
         uniform_int_distribution<int> distribution(min, max);
         return distribution(generator);
     }
 
+    // Returns true if the random percentage succeeds.
     bool chance(int percentage)
     {
         return integer(1, 100) <= percentage;
     }
 };
 
+
 // ============================================================
 // ENUMS
 // ============================================================
 
+// Different types of jobs a person can have.
 enum class JobType
 {
     Student,
@@ -43,6 +52,8 @@ enum class JobType
     Unemployed
 };
 
+
+// Different actions that a person can perform.
 enum class Action
 {
     Eat,
@@ -54,194 +65,101 @@ enum class Action
     Relax
 };
 
+
 // ============================================================
-// PERSON
+// NEEDS
 // ============================================================
 
-class Person
+// This class stores the physical and emotional needs
+// of a person.
+class Needs
 {
-protected:
-    string name;
-    int age;
-    int money;
+private:
 
-    int health;
     int hunger;
     int energy;
+    int health;
     int happiness;
-
-    JobType job;
 
 public:
 
-    Person(string name, int age, int money)
-        : name(name),
-          age(age),
-          money(money),
-          health(100),
-          hunger(20),
-          energy(80),
-          happiness(70),
-          job(JobType::Unemployed)
+    // Constructor: creates a person with default needs.
+    Needs()
     {
+        hunger = 20;
+        energy = 80;
+        health = 100;
+        happiness = 70;
     }
 
-    virtual ~Person() = default;
-
-    // --------------------------------------------------------
-    // GETTERS
-    // --------------------------------------------------------
-
-    string getName() const
-    {
-        return name;
-    }
-
-    int getAge() const
-    {
-        return age;
-    }
-
-    int getMoney() const
-    {
-        return money;
-    }
-
-    int getHealth() const
-    {
-        return health;
-    }
-
+    // Returns the current hunger level.
     int getHunger() const
     {
         return hunger;
     }
 
+    // Returns the current energy level.
     int getEnergy() const
     {
         return energy;
     }
 
+    // Returns the current health level.
+    int getHealth() const
+    {
+        return health;
+    }
+
+    // Returns the current happiness level.
     int getHappiness() const
     {
         return happiness;
     }
 
-    JobType getJob() const
+    // Increases hunger as time passes.
+    void increaseHunger(int amount)
     {
-        return job;
+        hunger += amount;
+        hunger = min(hunger, 100);
     }
 
-    // --------------------------------------------------------
-    // JOB
-    // --------------------------------------------------------
-
-    void setJob(JobType newJob)
+    // Changes energy and keeps it between 0 and 100.
+    void changeEnergy(int amount)
     {
-        job = newJob;
+        energy += amount;
+        energy = max(0, min(energy, 100));
     }
 
-    // --------------------------------------------------------
-    // BASIC ACTIONS
-    // --------------------------------------------------------
-
-    virtual void eat()
+    // Changes health and keeps it between 0 and 100.
+    void changeHealth(int amount)
     {
-        if (money >= 50)
-        {
-            money -= 50;
-
-            hunger -= 35;
-            hunger = max(hunger, 0);
-
-            happiness += 5;
-            happiness = min(happiness, 100);
-        }
+        health += amount;
+        health = max(0, min(health, 100));
     }
 
-    virtual void sleep()
+    // Changes happiness and keeps it between 0 and 100.
+    void changeHappiness(int amount)
     {
-        energy += 40;
-        energy = min(energy, 100);
+        happiness += amount;
+        happiness = max(0, min(happiness, 100));
+    }
 
+    // Updates needs naturally as one day passes.
+    void dailyUpdate()
+    {
         hunger += 5;
         hunger = min(hunger, 100);
-    }
 
-    virtual void work()
-    {
-        money += 100;
-
-        energy -= 25;
-        hunger += 10;
-        happiness += 3;
-
-        energy = max(energy, 0);
-        hunger = min(hunger, 100);
-        happiness = min(happiness, 100);
-    }
-
-    virtual void study()
-    {
-        energy -= 20;
-        hunger += 8;
-        happiness += 2;
-
-        energy = max(energy, 0);
-        hunger = min(hunger, 100);
-        happiness = min(happiness, 100);
-    }
-
-    virtual void exercise()
-    {
-        energy -= 20;
-        hunger += 8;
-        health += 3;
-        happiness += 8;
-
-        energy = max(energy, 0);
-        hunger = min(hunger, 100);
-        health = min(health, 100);
-        happiness = min(happiness, 100);
-    }
-
-    virtual void socialize()
-    {
-        energy -= 10;
-        happiness += 12;
-
-        energy = max(energy, 0);
-        happiness = min(happiness, 100);
-    }
-
-    virtual void relax()
-    {
-        energy += 10;
-        happiness += 5;
-
-        energy = min(energy, 100);
-        happiness = min(happiness, 100);
-    }
-
-    // --------------------------------------------------------
-    // DAILY UPDATE
-    // --------------------------------------------------------
-
-    virtual void dailyUpdate()
-    {
-        hunger += 5;
         energy -= 5;
-
-        hunger = min(hunger, 100);
         energy = max(energy, 0);
 
-        // Hunger affects health
+        // Being extremely hungry damages health.
         if (hunger > 80)
         {
             health -= 5;
         }
 
-        // Very low energy affects happiness
+        // Very low energy makes a person less happy.
         if (energy < 20)
         {
             happiness -= 5;
@@ -250,47 +168,347 @@ public:
         health = max(health, 0);
         happiness = max(happiness, 0);
     }
+};
 
-    // --------------------------------------------------------
-    // DECISION MAKING
-    // --------------------------------------------------------
 
-    virtual Action decideAction()
+// ============================================================
+// PERSONALITY
+// ============================================================
+
+// Stores personality traits that influence decisions.
+class Personality
+{
+private:
+
+    int ambition;
+    int sociability;
+    int discipline;
+
+public:
+
+    // Creates a personality with random traits.
+    Personality(Random& random)
     {
-        // Emergency priorities
-
-        if (hunger >= 70 && money >= 50)
-            return Action::Eat;
-
-        if (energy <= 20)
-            return Action::Sleep;
-
-        if (health < 40)
-            return Action::Exercise;
-
-        // Random behaviour
-
-        int decision = rand() % 100;
-
-        if (decision < 30)
-            return Action::Work;
-
-        if (decision < 45)
-            return Action::Exercise;
-
-        if (decision < 60)
-            return Action::Socialize;
-
-        if (decision < 75)
-            return Action::Relax;
-
-        return Action::Work;
+        ambition = random.integer(20, 100);
+        sociability = random.integer(20, 100);
+        discipline = random.integer(20, 100);
     }
 
-    // --------------------------------------------------------
-    // PERFORM ACTION
-    // --------------------------------------------------------
+    // Returns ambition level.
+    int getAmbition() const
+    {
+        return ambition;
+    }
 
+    // Returns sociability level.
+    int getSociability() const
+    {
+        return sociability;
+    }
+
+    // Returns discipline level.
+    int getDiscipline() const
+    {
+        return discipline;
+    }
+
+    // Displays personality information.
+    void display() const
+    {
+        cout << "Ambition   : " << ambition << "/100\n";
+        cout << "Sociability: " << sociability << "/100\n";
+        cout << "Discipline : " << discipline << "/100\n";
+    }
+};
+
+
+// ============================================================
+// PERSON
+// ============================================================
+
+// Base class representing a person inside the simulation.
+class Person
+{
+protected:
+
+    string name;
+    int age;
+    int money;
+
+    Needs needs;
+    Personality personality;
+
+    JobType job;
+
+public:
+
+    // Constructor: creates a person with basic information.
+    Person(
+        string name,
+        int age,
+        int money,
+        Random& random
+    )
+        : name(name),
+          age(age),
+          money(money),
+          personality(random)
+    {
+        job = JobType::Unemployed;
+    }
+
+    // Virtual destructor allows safe inheritance.
+    virtual ~Person() = default;
+
+
+    // ========================================================
+    // GETTERS
+    // ========================================================
+
+    // Returns the person's name.
+    string getName() const
+    {
+        return name;
+    }
+
+    // Returns the person's age.
+    int getAge() const
+    {
+        return age;
+    }
+
+    // Returns the person's money.
+    int getMoney() const
+    {
+        return money;
+    }
+
+    // Returns the person's needs.
+    const Needs& getNeeds() const
+    {
+        return needs;
+    }
+
+    // Returns the person's job.
+    JobType getJob() const
+    {
+        return job;
+    }
+
+
+    // ========================================================
+    // BASIC ACTIONS
+    // ========================================================
+
+    // Makes the person buy food and reduce hunger.
+    virtual void eat()
+    {
+        if (money >= 50)
+        {
+            money -= 50;
+
+            needs.increaseHunger(-35);
+            needs.changeHappiness(5);
+        }
+    }
+
+
+    // Makes the person sleep and recover energy.
+    virtual void sleep()
+    {
+        needs.changeEnergy(40);
+        needs.increaseHunger(5);
+    }
+
+
+    // Makes the person work and earn money.
+    virtual void work()
+    {
+        money += 100;
+
+        needs.changeEnergy(-25);
+        needs.increaseHunger(10);
+        needs.changeHappiness(3);
+    }
+
+
+    // Makes the person study.
+    virtual void study()
+    {
+        needs.changeEnergy(-20);
+        needs.increaseHunger(8);
+        needs.changeHappiness(2);
+    }
+
+
+    // Makes the person exercise.
+    virtual void exercise()
+    {
+        needs.changeEnergy(-20);
+        needs.increaseHunger(8);
+
+        needs.changeHealth(3);
+        needs.changeHappiness(8);
+    }
+
+
+    // Makes the person socialize with others.
+    virtual void socialize()
+    {
+        needs.changeEnergy(-10);
+        needs.changeHappiness(12);
+    }
+
+
+    // Makes the person relax.
+    virtual void relax()
+    {
+        needs.changeEnergy(10);
+        needs.changeHappiness(5);
+    }
+
+
+    // ========================================================
+    // DECISION SYSTEM
+    // ========================================================
+
+    // Calculates how useful eating would be.
+    virtual int scoreEat()
+    {
+        int score = 0;
+
+        // The hungrier someone is, the more valuable eating becomes.
+        score += needs.getHunger();
+
+        // People with low happiness also benefit slightly from eating.
+        if (needs.getHappiness() < 40)
+        {
+            score += 10;
+        }
+
+        // Can't eat if there isn't enough money.
+        if (money < 50)
+        {
+            score = 0;
+        }
+
+        return score;
+    }
+
+
+    // Calculates how useful sleeping would be.
+    virtual int scoreSleep()
+    {
+        int score = 100 - needs.getEnergy();
+
+        return score;
+    }
+
+
+    // Calculates how useful working would be.
+    virtual int scoreWork()
+    {
+        int score = 0;
+
+        // Ambitious people value work more.
+        score += personality.getAmbition();
+
+        // Having little money makes earning money more important.
+        if (money < 1000)
+        {
+            score += 30;
+        }
+
+        // Very low energy makes working less attractive.
+        if (needs.getEnergy() < 25)
+        {
+            score -= 40;
+        }
+
+        return max(score, 0);
+    }
+
+
+    // Calculates how useful exercising would be.
+    virtual int scoreExercise()
+    {
+        int score = 20;
+
+        // Low health increases the importance of exercise.
+        if (needs.getHealth() < 70)
+        {
+            score += 40;
+        }
+
+        // Exercise becomes less attractive when exhausted.
+        if (needs.getEnergy() < 30)
+        {
+            score -= 30;
+        }
+
+        return max(score, 0);
+    }
+
+
+    // Calculates how useful socializing would be.
+    virtual int scoreSocialize()
+    {
+        int score = personality.getSociability();
+
+        // Low happiness increases the value of social interaction.
+        if (needs.getHappiness() < 50)
+        {
+            score += 25;
+        }
+
+        return min(score, 100);
+    }
+
+
+    // Calculates how useful relaxing would be.
+    virtual int scoreRelax()
+    {
+        int score = 30;
+
+        // Very low happiness makes relaxation more attractive.
+        if (needs.getHappiness() < 40)
+        {
+            score += 30;
+        }
+
+        return score;
+    }
+
+
+    // Chooses the action with the highest utility score.
+    virtual Action decideAction()
+    {
+        vector<pair<Action, int>> actions =
+        {
+            {Action::Eat, scoreEat()},
+            {Action::Sleep, scoreSleep()},
+            {Action::Work, scoreWork()},
+            {Action::Exercise, scoreExercise()},
+            {Action::Socialize, scoreSocialize()},
+            {Action::Relax, scoreRelax()}
+        };
+
+        // Sort actions from highest score to lowest score.
+        sort(
+            actions.begin(),
+            actions.end(),
+            [](const auto& a, const auto& b)
+            {
+                return a.second > b.second;
+            }
+        );
+
+        // The first action now has the highest utility.
+        return actions[0].first;
+    }
+
+
+    // Performs whichever action the decision engine selected.
     void performAction(Action action)
     {
         switch (action)
@@ -325,10 +543,24 @@ public:
         }
     }
 
-    // --------------------------------------------------------
-    // DISPLAY
-    // --------------------------------------------------------
 
+    // Updates the person's needs and then lets them make
+    // an autonomous decision.
+    virtual void simulateDay()
+    {
+        needs.dailyUpdate();
+
+        Action action = decideAction();
+
+        performAction(action);
+    }
+
+
+    // ========================================================
+    // DISPLAY
+    // ========================================================
+
+    // Displays all important information about the person.
     virtual void display() const
     {
         cout << "\n----------------------------------------\n";
@@ -336,10 +568,22 @@ public:
         cout << "Name       : " << name << '\n';
         cout << "Age        : " << age << '\n';
         cout << "Money      : Rs." << money << '\n';
-        cout << "Health     : " << health << "/100\n";
-        cout << "Hunger     : " << hunger << "/100\n";
-        cout << "Energy     : " << energy << "/100\n";
-        cout << "Happiness  : " << happiness << "/100\n";
+
+        cout << "Health     : "
+             << needs.getHealth()
+             << "/100\n";
+
+        cout << "Hunger     : "
+             << needs.getHunger()
+             << "/100\n";
+
+        cout << "Energy     : "
+             << needs.getEnergy()
+             << "/100\n";
+
+        cout << "Happiness  : "
+             << needs.getHappiness()
+             << "/100\n";
 
         cout << "Job        : ";
 
@@ -357,186 +601,214 @@ public:
                 cout << "Entrepreneur";
                 break;
 
-            case JobType::Unemployed:
+            default:
                 cout << "Unemployed";
-                break;
         }
 
-        cout << '\n';
+        cout << "\n\nPersonality\n";
+
+        personality.display();
 
         cout << "----------------------------------------\n";
     }
 };
 
+
 // ============================================================
 // STUDENT
 // ============================================================
 
+// Student is a specialized type of Person.
 class Student : public Person
 {
 public:
 
-    Student(string name, int age, int money)
-        : Person(name, age, money)
+    // Creates a student and assigns the Student job type.
+    Student(
+        string name,
+        int age,
+        int money,
+        Random& random
+    )
+        : Person(name, age, money, random)
     {
         job = JobType::Student;
     }
 
+
+    // Students prioritize studying more than normal people.
     Action decideAction() override
     {
-        if (hunger >= 70 && money >= 50)
+        // Critical needs always come first.
+        if (scoreEat() > 80)
             return Action::Eat;
 
-        if (energy <= 20)
+        if (scoreSleep() > 80)
             return Action::Sleep;
 
-        int decision = rand() % 100;
-
-        if (decision < 40)
+        // Students use their discipline to decide whether
+        // studying should be their main activity.
+        if (personality.getDiscipline() > 50)
             return Action::Study;
 
-        if (decision < 60)
-            return Action::Socialize;
-
-        if (decision < 75)
-            return Action::Exercise;
-
-        return Action::Relax;
+        return Person::decideAction();
     }
 
+
+    // Students earn less money from part-time work.
     void work() override
     {
-        // Students have part-time jobs
         money += 50;
 
-        energy -= 20;
-        hunger += 8;
+        needs.changeEnergy(-20);
+        needs.increaseHunger(8);
+    }
 
-        energy = max(energy, 0);
-        hunger = min(hunger, 100);
+
+    // Students have their own study action.
+    void study() override
+    {
+        needs.changeEnergy(-20);
+        needs.increaseHunger(8);
+
+        // Studying slightly increases happiness.
+        needs.changeHappiness(3);
     }
 };
+
 
 // ============================================================
 // EMPLOYEE
 // ============================================================
 
+// Employee represents a working adult.
 class Employee : public Person
 {
 public:
 
-    Employee(string name, int age, int money)
-        : Person(name, age, money)
+    // Creates an employee.
+    Employee(
+        string name,
+        int age,
+        int money,
+        Random& random
+    )
+        : Person(name, age, money, random)
     {
         job = JobType::Employee;
     }
 
+
+    // Employees prioritize work when they have enough energy.
     Action decideAction() override
     {
-        if (hunger >= 70 && money >= 50)
+        if (scoreEat() > 80)
             return Action::Eat;
 
-        if (energy <= 20)
+        if (scoreSleep() > 80)
             return Action::Sleep;
 
-        int decision = rand() % 100;
-
-        if (decision < 50)
+        if (scoreWork() > 70)
             return Action::Work;
 
-        if (decision < 70)
-            return Action::Socialize;
-
-        if (decision < 85)
-            return Action::Exercise;
-
-        return Action::Relax;
+        return Person::decideAction();
     }
 
+
+    // Employees earn a regular salary.
     void work() override
     {
         money += 150;
 
-        energy -= 30;
-        hunger += 12;
-
-        energy = max(energy, 0);
-        hunger = min(hunger, 100);
+        needs.changeEnergy(-30);
+        needs.increaseHunger(12);
     }
 };
+
 
 // ============================================================
 // ENTREPRENEUR
 // ============================================================
 
+// Entrepreneur represents a person running a business.
 class Entrepreneur : public Person
 {
 public:
 
-    Entrepreneur(string name, int age, int money)
-        : Person(name, age, money)
+    // Creates an entrepreneur.
+    Entrepreneur(
+        string name,
+        int age,
+        int money,
+        Random& random
+    )
+        : Person(name, age, money, random)
     {
         job = JobType::Entrepreneur;
     }
 
+
+    // Entrepreneurs strongly prioritize working.
     Action decideAction() override
     {
-        if (hunger >= 70 && money >= 50)
+        if (scoreEat() > 80)
             return Action::Eat;
 
-        if (energy <= 20)
+        if (scoreSleep() > 80)
             return Action::Sleep;
 
-        int decision = rand() % 100;
-
-        if (decision < 60)
+        // Entrepreneurs are strongly influenced by ambition.
+        if (personality.getAmbition() > 60)
             return Action::Work;
 
-        if (decision < 75)
-            return Action::Socialize;
-
-        if (decision < 90)
-            return Action::Exercise;
-
-        return Action::Relax;
+        return Person::decideAction();
     }
 
+
+    // Entrepreneurs have variable income.
     void work() override
     {
-        // Entrepreneurs have more variable income
-        int income = 100 + (rand() % 301);
+        int income = 100 + rand() % 401;
 
         money += income;
 
-        energy -= 35;
-        hunger += 15;
-
-        energy = max(energy, 0);
-        hunger = min(hunger, 100);
+        needs.changeEnergy(-35);
+        needs.increaseHunger(15);
     }
 };
 
+
 // ============================================================
-// WORLD
+// SIMULATION ENGINE
 // ============================================================
 
-class World
+// This class controls the entire simulated world.
+class SimulationEngine
 {
 private:
 
+    // Stores every person in the simulated population.
     vector<Person*> population;
 
+    // Keeps track of simulation time.
     int day;
     int year;
 
+    // Random number generator for the simulation.
+    Random random;
+
 public:
 
-    World()
-        : day(1), year(1)
+    // Constructor: starts the simulation at Day 1.
+    SimulationEngine()
     {
+        day = 1;
+        year = 1;
     }
 
-    ~World()
+
+    // Destructor: cleans up dynamically allocated people.
+    ~SimulationEngine()
     {
         for (Person* person : population)
         {
@@ -544,112 +816,106 @@ public:
         }
     }
 
-    // --------------------------------------------------------
-    // ADD PERSON
-    // --------------------------------------------------------
 
+    // Adds a new person to the simulation.
     void addPerson(Person* person)
     {
         population.push_back(person);
     }
 
-    // --------------------------------------------------------
-    // GET POPULATION
-    // --------------------------------------------------------
 
+    // Returns the current population size.
     int getPopulation() const
     {
         return population.size();
     }
 
-    // --------------------------------------------------------
-    // SIMULATE ONE DAY
-    // --------------------------------------------------------
 
+    // Simulates one complete day.
     void simulateDay()
     {
         cout << "\n========================================\n";
-        cout << "             DAY " << day << '\n';
+        cout << "              DAY " << day << '\n';
         cout << "========================================\n";
 
+        // Every person updates their needs and makes
+        // an autonomous decision.
         for (Person* person : population)
         {
-            person->dailyUpdate();
-
-            Action action = person->decideAction();
-
-            person->performAction(action);
+            person->simulateDay();
         }
 
+        // Random world events happen after people's actions.
         randomEvent();
 
+        // Advance simulation time.
         day++;
 
+        // After 365 days, move to the next year.
         if (day > 365)
         {
             day = 1;
             year++;
+
+            cout << "\n*** A NEW YEAR HAS BEGUN ***\n";
         }
     }
 
-    // --------------------------------------------------------
-    // RANDOM EVENTS
-    // --------------------------------------------------------
 
+    // Generates random events that affect the population.
     void randomEvent()
     {
-        int event = rand() % 100;
+        int event = random.integer(1, 100);
 
-        if (event < 5)
+        // 5% chance of a festival.
+        if (event <= 5)
         {
             cout << "\n*** FESTIVAL ***\n";
 
+            // Festivals increase everyone's happiness.
             for (Person* person : population)
             {
-                // Festival makes everyone happier
-                // indirectly through a social event
                 person->socialize();
             }
         }
 
-        else if (event < 8)
+        // 5% chance of an economic event.
+        else if (event <= 10)
         {
-            cout << "\n*** ECONOMIC RECESSION ***\n";
+            cout << "\n*** ECONOMIC BOOM ***\n";
 
+            // Everyone receives a small financial boost.
             for (Person* person : population)
             {
-                // Everyone loses some money
                 person->work();
-
-                // Reverse most of the income
-                // to represent reduced earnings
             }
         }
 
-        else if (event < 10)
+        // 5% chance of a heat wave.
+        else if (event <= 15)
         {
             cout << "\n*** HEAT WAVE ***\n";
 
+            // Heat makes people lose energy.
             for (Person* person : population)
             {
-                person->exercise();
+                person->sleep();
             }
         }
     }
 
-    // --------------------------------------------------------
-    // DISPLAY POPULATION
-    // --------------------------------------------------------
 
+    // Displays all people currently living in the world.
     void displayPopulation() const
     {
         cout << "\n========================================\n";
-        cout << "             POPULATION\n";
+        cout << "              POPULATION\n";
         cout << "========================================\n";
 
         for (int i = 0; i < population.size(); i++)
         {
-            cout << i + 1 << ". "
+            cout << i + 1
+                 << ". "
                  << population[i]->getName()
                  << " | Age: "
                  << population[i]->getAge()
@@ -659,10 +925,8 @@ public:
         }
     }
 
-    // --------------------------------------------------------
-    // DISPLAY PERSON
-    // --------------------------------------------------------
 
+    // Allows the user to inspect an individual person.
     void displayPerson()
     {
         displayPopulation();
@@ -681,10 +945,8 @@ public:
         population[index - 1]->display();
     }
 
-    // --------------------------------------------------------
-    // STATISTICS
-    // --------------------------------------------------------
 
+    // Calculates and displays statistics for the entire population.
     void displayStatistics() const
     {
         if (population.empty())
@@ -695,21 +957,30 @@ public:
         int totalHappiness = 0;
         int totalEnergy = 0;
 
+        // Add together everyone's statistics.
         for (Person* person : population)
         {
             totalMoney += person->getMoney();
-            totalHealth += person->getHealth();
-            totalHappiness += person->getHappiness();
-            totalEnergy += person->getEnergy();
+
+            totalHealth +=
+                person->getNeeds().getHealth();
+
+            totalHappiness +=
+                person->getNeeds().getHappiness();
+
+            totalEnergy +=
+                person->getNeeds().getEnergy();
         }
 
         cout << "\n========================================\n";
-        cout << "             STATISTICS\n";
+        cout << "              STATISTICS\n";
         cout << "========================================\n";
 
-        cout << "Population        : " << population.size() << '\n';
-
         cout << fixed << setprecision(1);
+
+        cout << "Population        : "
+             << population.size()
+             << '\n';
 
         cout << "Average Money     : Rs."
              << (double)totalMoney / population.size()
@@ -727,56 +998,57 @@ public:
              << (double)totalEnergy / population.size()
              << '\n';
 
-        cout << "Year              : " << year << '\n';
-        cout << "Day               : " << day << '\n';
+        cout << "Year              : "
+             << year
+             << '\n';
+
+        cout << "Day               : "
+             << day
+             << '\n';
     }
 };
+
 
 // ============================================================
 // MAIN
 // ============================================================
 
+// Program execution starts here.
 int main()
 {
-    srand(time(nullptr));
-
-    World world;
+    SimulationEngine simulation;
 
     // --------------------------------------------------------
     // CREATE INITIAL POPULATION
     // --------------------------------------------------------
 
-    world.addPerson(
-        new Student("Alex", 19, 1000)
+    // Create students.
+    simulation.addPerson(
+        new Student("Alex", 19, 1000, *(new Random()))
     );
 
-    world.addPerson(
-        new Student("Maya", 21, 1500)
+    simulation.addPerson(
+        new Student("Maya", 21, 1500, *(new Random()))
     );
 
-    world.addPerson(
-        new Employee("Daniel", 28, 5000)
+    // Create employees.
+    simulation.addPerson(
+        new Employee("Daniel", 28, 5000, *(new Random()))
     );
 
-    world.addPerson(
-        new Employee("Sarah", 32, 7000)
+    simulation.addPerson(
+        new Employee("Sarah", 32, 7000, *(new Random()))
     );
 
-    world.addPerson(
-        new Entrepreneur("Ryan", 35, 10000)
+    // Create entrepreneurs.
+    simulation.addPerson(
+        new Entrepreneur("Ryan", 35, 10000, *(new Random()))
     );
 
-    world.addPerson(
-        new Employee("Emma", 26, 4500)
+    simulation.addPerson(
+        new Entrepreneur("Olivia", 40, 15000, *(new Random()))
     );
 
-    world.addPerson(
-        new Student("Noah", 20, 800)
-    );
-
-    world.addPerson(
-        new Entrepreneur("Olivia", 40, 15000)
-    );
 
     // --------------------------------------------------------
     // MAIN MENU
@@ -785,6 +1057,7 @@ int main()
     while (true)
     {
         cout << "\n\n";
+
         cout << "========================================\n";
         cout << "       LIFE SIMULATION ENGINE\n";
         cout << "========================================\n";
@@ -806,47 +1079,60 @@ int main()
         {
             case 1:
 
-                world.simulateDay();
+                simulation.simulateDay();
 
                 break;
+
 
             case 2:
 
+                // Simulate seven days.
                 for (int i = 0; i < 7; i++)
-                    world.simulateDay();
+                {
+                    simulation.simulateDay();
+                }
 
                 break;
+
 
             case 3:
 
+                // Simulate thirty days.
                 for (int i = 0; i < 30; i++)
-                    world.simulateDay();
+                {
+                    simulation.simulateDay();
+                }
 
                 break;
+
 
             case 4:
 
-                world.displayPopulation();
+                simulation.displayPopulation();
 
                 break;
+
 
             case 5:
 
-                world.displayPerson();
+                simulation.displayPerson();
 
                 break;
+
 
             case 6:
 
-                world.displayStatistics();
+                simulation.displayStatistics();
 
                 break;
+
 
             case 7:
 
                 cout << "\nSimulation shutting down...\n";
 
                 return 0;
+
 
             default:
 
